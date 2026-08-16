@@ -1,0 +1,36 @@
+name: daily-refresh
+
+on:
+  schedule:
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Generate status from live API data
+        run: node scripts/daily.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit if changed
+        run: |
+          git config user.name "zoahdev"
+          git config user.email "245318860+zoahdev@users.noreply.github.com"
+          if [ -n "$(git status --porcelain)" ]; then
+            git add index.html status.json
+            git commit -m "chore: daily ecosystem refresh $(date -u +%Y-%m-%d)"
+            git push
+          else
+            echo "no changes"
+          fi
